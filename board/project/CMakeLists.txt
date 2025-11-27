@@ -34,7 +34,7 @@ target_link_libraries(${PROJECT_NAME}
     pico_i2c_slave
 )
 
-pico_add_extra_outputs(${PROJECT_NAME})
-
 pico_enable_stdio_usb(${PROJECT_NAME} 1) # 1 normal, 0 probe debug 
 pico_enable_stdio_uart(${PROJECT_NAME} 0) # 0 normal, 1 probe debug
+
+pico_add_extra_outputs(${PROJECT_NAME})

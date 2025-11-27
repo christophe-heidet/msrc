@@ -11,7 +11,7 @@
                 "${workspaceFolder}/board/freertos/"
             ],
             "intelliSenseMode": "gcc-arm",
-            "compilerPath": "/usr/bin/arm-none-eabi-gcc",
+            "compilerPath": "${env:ARM_TOOLCHAIN_PATH}",
             "cStandard": "c17",
             "cppStandard": "c++14"
         }
