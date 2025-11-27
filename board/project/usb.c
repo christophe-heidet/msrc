@@ -9,25 +9,27 @@
 
 #define AIRCR_Register (*((volatile uint32_t *)(PPB_BASE + 0x0ED0C)))
 
-#define USB_BUFFER_LENGTH 256
+#define USB_BUFFER_LENGTH 256u
 #define USB_INTERVAL_MS 1000
 
 static uint8_t buffer_rx[USB_BUFFER_LENGTH];
 
-static int read_usb();
-static void process_usb(int lenght);
+static uint32_t read_usb();
+static void process_usb(uint32_t lenght);
 
 void usb_task() {
     while (1) {
-        int length = read_usb();
-        if (length) process_usb(length);
+        uint32_t length = read_usb();
+        if (length) {
+            process_usb(length);
+        }
         debug("\nUSB (%u)", uxTaskGetStackHighWaterMark(NULL));
         vTaskDelay(USB_INTERVAL_MS / portTICK_PERIOD_MS);
     }
 }
 
-static void process_usb(int lenght) {
-    debug("\nUSB. Processing (%i) 0x%X 0x%X", lenght, buffer_rx[0], buffer_rx[1]);
+static void process_usb(uint32_t lenght) {
+    debug("\nUSB. Processing (%d) 0x%X 0x%X", lenght, buffer_rx[0], buffer_rx[1]);
 
     /*
     header - 0x30
@@ -38,27 +40,31 @@ static void process_usb(int lenght) {
               0x34 - debug off
     */
 
-    if (buffer_rx[0] == 0x30) {
-        if (buffer_rx[1] == 0x30 &&
-            lenght == sizeof(config_t) + 2) {  // read config from usb, write to flash and reboot
+    if ((lenght >= 2u) && (buffer_rx[0] == 0x30)) {
+        switch (buffer_rx[1]) {
+        case 0x30:  // read config from usb, write to flash and reboot
+            if (lenght == (sizeof(config_t) + 2u)) {
+                config_t *config = (config_t *)(&buffer_rx[2]);
+                if (config->version == CONFIG_VERSION) {
+                    config->rpm_multiplier = config->pinionTeeth / (1.0 * config->mainTeeth * config->pairOfPoles);
+                    context.led_cycles = 3;
+                    context.led_cycle_duration = 1000;
+                    vTaskResume(context.led_task_handle);
+                    vTaskDelay(3000 / portTICK_PERIOD_MS);
+                    context.led_cycles = 1;
+                    context.led_cycle_duration = 6;
+                    vTaskResume(context.led_task_handle);
+                    config_write(config);
+                    debug("\nUSB. Updated config");
+                    // sleep_ms(1000);
+                    // AIRCR_Register = 0x5FA0004;
+                } else {
+                    debug("\nUSB. Incompatible config version");
+                }
+            }
+            break;
 
-            config_t *config = (config_t *)(buffer_rx + 2);
-            if (config->version == CONFIG_VERSION) {
-                config->rpm_multiplier = config->pinionTeeth / (1.0 * config->mainTeeth * config->pairOfPoles);
-                context.led_cycles = 3;
-                context.led_cycle_duration = 1000;
-                vTaskResume(context.led_task_handle);
-                vTaskDelay(3000 / portTICK_PERIOD_MS);
-                context.led_cycles = 1;
-                context.led_cycle_duration = 6;
-                vTaskResume(context.led_task_handle);
-                config_write(config);
-                debug("\nUSB. Updated config");
-                // sleep_ms(1000);
-                // AIRCR_Register = 0x5FA0004;
-            } else
-                debug("\nUSB. Incompatible config version");
-        } else if (buffer_rx[1] == 0x31 && lenght == 2) {  // send config
+        case 0x31:  // send config
             uint8_t debug_state = context.debug;
             context.debug = 0;
             context.led_cycles = 2;
@@ -77,25 +83,36 @@ static void process_usb(int lenght) {
             if (debug_state) vTaskDelay(1000 / portTICK_PERIOD_MS);
             context.debug = debug_state;
             debug("\nUSB. Send config");
-        } else if (buffer_rx[1] == 0x33 && lenght == 2) {  // debug enable
+            break;
+
+        case 0x33:  // debug enable
             context.debug = 1;
             debug("\nUSB. Debug enabled. MSRC %s", PROJECT_VERSION);
-        } else if (buffer_rx[1] == 0x34 && lenght == 2) {  // debug disable
+            break;
+
+        case 0x34:  // debug disable
             context.debug = 0;
             debug("\nUSB. Debug disabled");
-        } else if (buffer_rx[1] == 0x35 && lenght == 2) {  // force save default config to flash
+            break;
+
+        case 0x35:  // force save default config to flash
             config_forze_write();
             debug("\nUSB. Default config saved to flash");
+            break;
+
+        default:
+            debug("\nUSB. Unknown command: 0x%x", buffer_rx[1]);
+            break;
         }
     }
 }
 
-static int read_usb() {
-    int buffer_index = 0;
+static uint32_t read_usb() {
+    uint32_t buffer_index = 0;
     while (1) {
         int c = getchar_timeout_us(1000);
-        if (c != PICO_ERROR_TIMEOUT && buffer_index < USB_BUFFER_LENGTH) {
-            buffer_rx[buffer_index++] = (c & 0xFF);
+        if ((c != PICO_ERROR_TIMEOUT) && (buffer_index < USB_BUFFER_LENGTH)) {
+            buffer_rx[buffer_index++] = (uint8_t)c;
         } else {
             break;
         }
