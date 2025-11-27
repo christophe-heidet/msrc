@@ -1282,6 +1282,14 @@ static void set_config(smartport_parameters_t *parameter) {
         xTaskCreate(sensor_double_task, "sensor_double_task", STACK_SENSOR_SMARTPORT_DOUBLE,
                     (void *)&parameter_sensor_double, 3, &task_handle);
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        // current
+        parameter_sensor.data_id = CURR_FIRST_ID;
+        parameter_sensor.value = parameter.current;
+        parameter_sensor.rate = config->refresh_rate_current;
+        xTaskCreate(sensor_task, "sensor_task", STACK_SENSOR_SMARTPORT,
+                    (void *)&parameter_sensor, 3, &task_handle);
+        xQueueSendToBack(context.tasks_queue_handle, task_handle, 0);
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         // bec. voltage & current
         parameter_sensor_double.data_id = SBEC_POWER_FIRST_ID;
         parameter_sensor_double.value_l = parameter.voltage_bec;
