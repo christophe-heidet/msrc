@@ -232,7 +232,7 @@ static void read_packet(uint8_t *buffer, smart_esc_parameters_t *parameter) {
               uxTaskGetStackHighWaterMark(NULL), *parameter->rpm, *parameter->voltage, *parameter->current,
               *parameter->temperature_fet, *parameter->temperature_bec, *parameter->voltage_bec,
               *parameter->current_bec);
-    } else if (buffer[0] == XBUS_SMART_BAT) {
+    } else if ((buffer[0] == XBUS_SMART_BAT) && (!parameter->calc_consumption)) {
         switch (buffer[2]) {
             case XBUS_SMART_BAT_REALTIME: {
                 srxl2_smart_bat_realtime_t bat_realtime;

@@ -608,9 +608,9 @@ static void set_config(void) {
         parameter.temperature_bec = malloc(sizeof(float));
         parameter.voltage_bec = malloc(sizeof(float));
         parameter.current_bec = malloc(sizeof(float));
+        parameter.consumption = malloc(sizeof(float));
         parameter.temperature_bat = malloc(sizeof(float));
         parameter.current_bat = malloc(sizeof(float));
-        parameter.consumption = malloc(sizeof(float));
         for (uint i = 0; i < 18; i++) parameter.cell[i] = malloc(sizeof(float));
         parameter.cells = malloc(sizeof(uint8_t));
         parameter.cycles = malloc(sizeof(uint16_t));
